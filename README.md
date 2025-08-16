@@ -1,10 +1,16 @@
 
-
 ---
 
 # 📚 Library Management System (LMS) – Microservices Architecture
 
 A cloud-native, scalable **Java Spring Boot-based Library Management System**, designed with clean modular **microservices**, **JWT authentication**, and deployed on **Google Cloud Run** using **Cloud SQL**.
+
+---
+
+## ⚠️ Note on Configuration
+
+Each service has its own `application.yml`, but it will be **ignored in source control** since it contains **sensitive information** (Cloud SQL credentials, JWT secret, etc.).
+Use **environment variables** or **GCP Secret Manager** to inject configs at runtime.
 
 ---
 
@@ -23,21 +29,21 @@ A cloud-native, scalable **Java Spring Boot-based Library Management System**, d
 
 ## 🧩 Microservices Overview
 
-| Microservice     | Responsibility                        | Database   |
-| ---------------- | ------------------------------------- | ---------- |
-| `auth-service`   | Authentication, JWT, roles            | PostgreSQL |
-| `book-service`   | Book catalog, authors, genres         | PostgreSQL |
-| `user-service`   | Member profile data                   | PostgreSQL |
-| `borrow-service` | Borrowing records, due dates, returns | PostgreSQL |
+| Microservice     | Responsibility                        | Database  |
+| ---------------- | ------------------------------------- | --------- |
+| `auth-service`   | Authentication, JWT, roles            | **MySQL** |
+| `book-service`   | Book catalog, authors, genres         | **MySQL** |
+| `user-service`   | Member profile data                   | **MySQL** |
+| `borrow-service` | Borrowing records, due dates, returns | **MySQL** |
 
 ---
 
 ## 🧱 Tech Stack
 
-* Java 21, Spring Boot 3.5.4
+* **Java 21**, Spring Boot **3.5.4**
 * Spring Web, Spring Security (JWT), Spring Data JPA
 * Hibernate Validator, MapStruct, Lombok
-* MySQL (Cloud SQL)
+* **MySQL (Cloud SQL)**
 * Docker & Docker Compose
 * GCP: Cloud Run, Artifact Registry, Secret Manager, Cloud SQL
 * Spring Cloud Gateway (API Gateway)
@@ -51,6 +57,7 @@ lms-auth-service/
 lms-book-service/
 lms-user-service/
 lms-borrow-service/
+lms-api-gateway/
 ```
 
 Each microservice:
@@ -68,25 +75,26 @@ src/
     │   ├── repository/
     │   └── service/
     └── resources/
-        └──  application.yml
+        └── (config via environment, not committed)
 ```
 
 ---
 
-## 📦 GitHub Repositories (Coming Soon)
+## 📦 GitHub Repositories
 
-| Microservice     | Repository Name      | Link             |
-| ---------------- | -------------------- | ---------------- |
-| `auth-service`   | `LMS-Auth-Service`   | 🔗 *Coming Soon* |
-| `book-service`   | `LMS-Book-Service`   | 🔗 *Coming Soon* |
-| `user-service`   | `LMS-User-Service`   | 🔗 *Coming Soon* |
-| `borrow-service` | `LMS-Borrow-Service` | 🔗 *Coming Soon* |
+| Microservice     | Repository Name      | Link                                                                 |
+| ---------------- | -------------------- | -------------------------------------------------------------------- |
+| `auth-service`   | `LMS-Auth-Service`   | 🔗 [LMS-Auth-Service](https://github.com/CODERonak/LMS-Auth-Service) |
+| `book-service`   | `LMS-Book-Service`   | 🔗 *Coming Soon*                                                     |
+| `user-service`   | `LMS-User-Service`   | 🔗 *Coming Soon*                                                     |
+| `borrow-service` | `LMS-Borrow-Service` | 🔗 *Coming Soon*                                                     |
+| `api-gateway`    | `LMS-API-Gateway`    | 🔗 *Coming Soon*                                                     |
 
 ---
 
 ## 🔐 Auth Service
 
-### 🔑 Auth Endpoints
+### Endpoints
 
 | Method | Endpoint         | Description         |
 | ------ | ---------------- | ------------------- |
@@ -97,7 +105,7 @@ src/
 
 ## 📘 Book Service
 
-### 📚 Endpoints
+### Endpoints
 
 | Method | Endpoint      | Description    |
 | ------ | ------------- | -------------- |
@@ -111,7 +119,7 @@ src/
 
 ## 👤 User Service
 
-### 👥 Endpoints
+### Endpoints
 
 | Method | Endpoint        | Description    |
 | ------ | --------------- | -------------- |
@@ -123,7 +131,7 @@ src/
 
 ## 📚 Borrow Service
 
-### 🔄 Endpoints
+### Endpoints
 
 | Method | Endpoint                    | Description            |
 | ------ | --------------------------- | ---------------------- |
@@ -166,11 +174,11 @@ routes:
 
 ## 🐳 Dockerization
 
-### Dockerfile (for each service)
+### Example Dockerfile (per service)
 
 ```dockerfile
-FROM openjdk:17-jdk-alpine
-COPY target/lms-auth-service.jar app.jar
+FROM openjdk:21-jdk-slim
+COPY target/*.jar app.jar
 ENTRYPOINT ["java", "-jar", "/app.jar"]
 ```
 
@@ -197,12 +205,13 @@ services:
     ports: ["8084:8080"]
 
   db:
-    image: postgres:15
+    image: mysql:8
     environment:
-      POSTGRES_DB: lms
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
-    ports: ["5432:5432"]
+      MYSQL_DATABASE: lms
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+    ports: ["3306:3306"]
 ```
 
 ---
@@ -211,7 +220,7 @@ services:
 
 ### ✅ Steps
 
-1. **Build Docker Images**
+1. **Build & Push Docker Images**
 
 ```bash
 docker build -t gcr.io/<project-id>/auth-service ./lms-auth-service
@@ -220,16 +229,16 @@ docker push gcr.io/<project-id>/auth-service
 
 Repeat for each service.
 
-2. **Cloud SQL**
+2. **Cloud SQL (MySQL)**
 
-* Use PostgreSQL instance
+* Use a **MySQL Cloud SQL instance**
 * Store DB credentials securely in **GCP Secret Manager**
 
 3. **Cloud Run Deployment**
 
 * Deploy each service as a container
-* Connect to Cloud SQL using Cloud SQL Auth Proxy or IAM-based connectivity
-* Configure environment variables (DB URL, user, password, JWT secret, etc.)
+* Connect to Cloud SQL using **Cloud SQL Auth Proxy** or IAM-based connectivity
+* Configure environment variables (`DB_URL`, `DB_USER`, `DB_PASS`, `JWT_SECRET`, etc.)
 
 4. **Monitoring & Logging**
 
@@ -238,20 +247,20 @@ Repeat for each service.
 
 ---
 
-## 🔐 Environment Configuration
+## 🔐 Environment Configuration (Injected via Secrets)
 
-Each service has an `application.yml`, for example:
+Each service loads its config from environment variables (not committed):
 
 ```yaml
 spring:
   datasource:
-    url: jdbc:postgresql://<CLOUD_SQL_IP>:5432/lms
+    url: jdbc:mysql://<CLOUD_SQL_IP>:3306/lms
     username: ${DB_USER}
     password: ${DB_PASS}
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate   # ✅ safer than update in prod
+    show-sql: false
 
 jwt:
   secret: ${JWT_SECRET}
